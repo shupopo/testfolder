@@ -40,11 +40,11 @@
 <body>
     <div class="game-container">
         <div class="score">
-            プレイヤー1: <span id="player1Score">0</span> | プレイヤー2: <span id="player2Score">0</span>
+            プレイヤー: <span id="player1Score">0</span> | コンピューター: <span id="player2Score">0</span>
         </div>
         <canvas id="gameCanvas" width="800" height="400"></canvas>
         <div class="controls">
-            プレイヤー1: W/S キー | プレイヤー2: ↑/↓ キー | リセット: スペースキー
+            操作: W/S キー または ↑/↓ キー | リセット: スペースキー
         </div>
     </div>
 
@@ -87,8 +87,8 @@
             x: canvas.width / 2,
             y: canvas.height / 2,
             radius: 8,
-            dx: 4,
-            dy: 3
+            dx: 6,
+            dy: 4.5
         };
 
         // キー入力状態
@@ -134,20 +134,34 @@
 
         // プレイヤーの移動
         function updatePlayers() {
-            // プレイヤー1 (W/S キー)
-            if (keys['w'] && player1.y > 0) {
+            // プレイヤー1 (W/S キーまたは矢印キー)
+            if ((keys['w'] || keys['arrowup']) && player1.y > 0) {
                 player1.y -= paddleSpeed;
             }
-            if (keys['s'] && player1.y < canvas.height - paddleHeight) {
+            if ((keys['s'] || keys['arrowdown']) && player1.y < canvas.height - paddleHeight) {
                 player1.y += paddleSpeed;
             }
 
-            // プレイヤー2 (矢印キー)
-            if (keys['arrowup'] && player2.y > 0) {
-                player2.y -= paddleSpeed;
-            }
-            if (keys['arrowdown'] && player2.y < canvas.height - paddleHeight) {
-                player2.y += paddleSpeed;
+            // プレイヤー2 (AI操作)
+            updateAI();
+        }
+
+        // AI操作
+        function updateAI() {
+            const aiSpeed = paddleSpeed * 0.8; // AIの速度を少し遅くして難易度調整
+            const paddleCenter = player2.y + player2.height / 2;
+            const ballCenter = ball.y;
+            
+            // ボールの位置に向かって移動するが、完璧ではないようにする
+            const diff = ballCenter - paddleCenter;
+            const threshold = 5; // 追従の精度を調整
+            
+            if (Math.abs(diff) > threshold) {
+                if (diff > 0 && player2.y < canvas.height - paddleHeight) {
+                    player2.y += aiSpeed;
+                } else if (diff < 0 && player2.y > 0) {
+                    player2.y -= aiSpeed;
+                }
             }
         }
 
@@ -202,8 +216,8 @@
         function resetBall() {
             ball.x = canvas.width / 2;
             ball.y = canvas.height / 2;
-            ball.dx = (Math.random() > 0.5 ? 1 : -1) * 4;
-            ball.dy = (Math.random() - 0.5) * 6;
+            ball.dx = (Math.random() > 0.5 ? 1 : -1) * 6;
+            ball.dy = (Math.random() - 0.5) * 9;
         }
 
         // スコア更新
