@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>古典的テニスゲーム (Pong)</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            color: white;
+        }
+        
+        .game-container {
+            text-align: center;
+        }
+        
+        canvas {
+            border: 2px solid white;
+            background-color: #000;
+        }
+        
+        .score {
+            font-size: 24px;
+            margin: 20px 0;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="score">
+            プレイヤー1: <span id="player1Score">0</span> | プレイヤー2: <span id="player2Score">0</span>
+        </div>
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        <div class="controls">
+            プレイヤー1: W/S キー | プレイヤー2: ↑/↓ キー | リセット: スペースキー
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // ゲーム状態
+        const game = {
+            running: true,
+            player1Score: 0,
+            player2Score: 0
+        };
+
+        // パドル設定
+        const paddleWidth = 10;
+        const paddleHeight = 80;
+        const paddleSpeed = 6;
+
+        // プレイヤー1（左側）
+        const player1 = {
+            x: 20,
+            y: canvas.height / 2 - paddleHeight / 2,
+            width: paddleWidth,
+            height: paddleHeight,
+            dy: 0
+        };
+
+        // プレイヤー2（右側）
+        const player2 = {
+            x: canvas.width - 30,
+            y: canvas.height / 2 - paddleHeight / 2,
+            width: paddleWidth,
+            height: paddleHeight,
+            dy: 0
+        };
+
+        // ボール設定
+        const ball = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 8,
+            dx: 4,
+            dy: 3
+        };
+
+        // キー入力状態
+        const keys = {};
+
+        // イベントリスナー
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (e.key === ' ') {
+                e.preventDefault();
+                resetGame();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        // パドルの描画
+        function drawPaddle(paddle) {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+        }
+
+        // ボールの描画
+        function drawBall() {
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // 中央線の描画
+        function drawCenterLine() {
+            ctx.setLineDash([5, 15]);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.strokeStyle = 'white';
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // プレイヤーの移動
+        function updatePlayers() {
+            // プレイヤー1 (W/S キー)
+            if (keys['w'] && player1.y > 0) {
+                player1.y -= paddleSpeed;
+            }
+            if (keys['s'] && player1.y < canvas.height - paddleHeight) {
+                player1.y += paddleSpeed;
+            }
+
+            // プレイヤー2 (矢印キー)
+            if (keys['arrowup'] && player2.y > 0) {
+                player2.y -= paddleSpeed;
+            }
+            if (keys['arrowdown'] && player2.y < canvas.height - paddleHeight) {
+                player2.y += paddleSpeed;
+            }
+        }
+
+        // ボールの移動と衝突判定
+        function updateBall() {
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+
+            // 上下の壁との衝突
+            if (ball.y - ball.radius <= 0 || ball.y + ball.radius >= canvas.height) {
+                ball.dy = -ball.dy;
+            }
+
+            // パドルとの衝突判定
+            // プレイヤー1のパドル
+            if (ball.x - ball.radius <= player1.x + player1.width &&
+                ball.x + ball.radius >= player1.x &&
+                ball.y >= player1.y &&
+                ball.y <= player1.y + player1.height) {
+                ball.dx = Math.abs(ball.dx);
+                
+                // パドルの中央からの距離でボールの角度を変更
+                const hitPos = (ball.y - player1.y) / player1.height;
+                ball.dy = (hitPos - 0.5) * 8;
+            }
+
+            // プレイヤー2のパドル
+            if (ball.x + ball.radius >= player2.x &&
+                ball.x - ball.radius <= player2.x + player2.width &&
+                ball.y >= player2.y &&
+                ball.y <= player2.y + player2.height) {
+                ball.dx = -Math.abs(ball.dx);
+                
+                // パドルの中央からの距離でボールの角度を変更
+                const hitPos = (ball.y - player2.y) / player2.height;
+                ball.dy = (hitPos - 0.5) * 8;
+            }
+
+            // ゴール判定
+            if (ball.x < 0) {
+                game.player2Score++;
+                updateScore();
+                resetBall();
+            } else if (ball.x > canvas.width) {
+                game.player1Score++;
+                updateScore();
+                resetBall();
+            }
+        }
+
+        // ボールをリセット
+        function resetBall() {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            ball.dx = (Math.random() > 0.5 ? 1 : -1) * 4;
+            ball.dy = (Math.random() - 0.5) * 6;
+        }
+
+        // スコア更新
+        function updateScore() {
+            document.getElementById('player1Score').textContent = game.player1Score;
+            document.getElementById('player2Score').textContent = game.player2Score;
+        }
+
+        // ゲームリセット
+        function resetGame() {
+            game.player1Score = 0;
+            game.player2Score = 0;
+            updateScore();
+            resetBall();
+            
+            // パドルの位置をリセット
+            player1.y = canvas.height / 2 - paddleHeight / 2;
+            player2.y = canvas.height / 2 - paddleHeight / 2;
+        }
+
+        // 画面をクリア
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // ゲームループ
+        function gameLoop() {
+            if (!game.running) return;
+
+            clearCanvas();
+            
+            updatePlayers();
+            updateBall();
+            
+            drawCenterLine();
+            drawPaddle(player1);
+            drawPaddle(player2);
+            drawBall();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ゲーム開始
+        gameLoop();
+    </script>
+</body>
+</html>
